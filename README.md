@@ -7,8 +7,8 @@
 
 ## Conduit とは
 
-Conduit は RealWolrd で作成する Medium.com というブログサイトのクローンサイトです。
-[RealWolrd](https://github.com/gothinkster/realworld/tree/main)
+Conduit は RealWorld で作成する Medium.com というブログサイトのクローンサイトです。
+[RealWorld](https://github.com/gothinkster/realworld/tree/main)
 [Conduit](https://demo.realworld.io/#/)
 今回は、Conduit を Laravel で制作しました。
 
