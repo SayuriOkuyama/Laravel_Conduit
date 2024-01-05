@@ -11,14 +11,9 @@ return new class extends Migration
    */
   public function up(): void
   {
-    Schema::create('users', function (Blueprint $table) {
-      $table->id();
-      $table->string('name');
-      $table->string('email')->unique();
-      $table->timestamp('email_verified_at')->nullable();
-      $table->string('password');
-      $table->rememberToken();
-      $table->timestamps();
+    Schema::create('article_tag', function (Blueprint $table) {
+      $table->foreignId('article_id')->constrained('articles')->cascadeOnDelete();;
+      $table->foreignId('tag_id')->constrained('tags')->cascadeOnDelete();;
     });
   }
 
@@ -27,6 +22,6 @@ return new class extends Migration
    */
   public function down(): void
   {
-    Schema::dropIfExists('users');
+    Schema::dropIfExists('article_tag');
   }
 };

@@ -6,8 +6,8 @@ use Illuminate\Http\Request;
 use App\Models\Article;
 use App\Models\User;
 use App\Models\Tag;
-use Illuminate\Mail\Markdown;
 use App\Http\Requests\StoreArticleRequest;
+use App\Models\ArticleTag;
 use Illuminate\Support\Facades\Auth;
 
 class ConduitController extends Controller
@@ -17,47 +17,16 @@ class ConduitController extends Controller
    */
   public function index()
   {
-    $articles = Article::orderBy('updated_at', 'desc')->paginate(20);
+    $articles = Article::with('tags')->orderBy('updated_at', 'desc')->paginate(20);
 
-    $articles_info = [];
-    foreach ($articles as $article) {
-      $user = User::find($article->user_id);
-      if (Tag::where('article_id', $article->id)->first()) {
-        $tag = Tag::where('article_id', $article->id)->first();
-      } else {
-        $tag = "";
-      }
-
-      $articles_info[] = [
-        "user" => $user,
-        "article" => $article,
-        "tag" => $tag
-      ];
-    }
-    return view('conduit.index', compact('articles_info'));
+    return view('conduit.index', compact('articles'));
   }
 
   public function usersArticle()
   {
-    $userId = Auth::id();
-    $usersArticles = Article::where('user_id', $userId)->paginate(20);
+    $usersArticles = Article::where('user_id', Auth::id())->paginate(20);
 
-    $usersArticles_info = [];
-    foreach ($usersArticles as $usersArticle) {
-      if (Tag::where('article_id', $usersArticle->id)->first()) {
-        $tag = Tag::where('article_id', $usersArticle->id)->first();
-      } else {
-        $tag = "";
-      }
-
-      $usersArticles_info[] = [
-        "user" => Auth::user(),
-        "article" => $usersArticle,
-        "tag" => $tag
-      ];
-    }
-
-    return view('conduit.index', compact('usersArticles_info'));
+    return view('conduit.index', compact('usersArticles'));
   }
 
   /**
@@ -77,15 +46,21 @@ class ConduitController extends Controller
       'title' => $request->title,
       'about' => $request->about,
       'content' => $request->content,
-      'user_id' => 1
+      'user_id' => Auth::id()
     ]);
 
-    $article_id = $article->id;
-
-    Tag::create([
-      'article_id' => $article_id,
-      'name' => $request->tag
-    ]);
+    $tags = $request->tags;
+    foreach ($tags as $tag) {
+      if ($tag !== null) {
+        // if (count($tags)) {
+        $tag_data = Tag::firstOrCreate(['name' => $tag]);
+        ArticleTag::create([
+          'article_id' => $article->id,
+          'tag_id' => $tag_data->id
+        ]);
+        // }
+      }
+    }
 
     return to_route('conduit.index');
   }
@@ -96,21 +71,8 @@ class ConduitController extends Controller
   public function show(string $id)
   {
     $article = Article::find($id);
-    $user = User::find($article->user_id);
-    $content = Markdown::parse(e($article->content));
-    if (Tag::where('article_id', $article->id)->first() !== null) {
-      $tag = Tag::where('article_id', $article->id)->first();
-    } else {
-      $tag = "";
-    }
 
-    $article_info = [
-      "article" => $article,
-      "user" => $user,
-      "tag" => $tag,
-      "content" => $content
-    ];
-    return view('conduit.article', compact('article_info', 'content'));
+    return view('conduit.article', compact('article'));
   }
 
   /**
@@ -119,22 +81,14 @@ class ConduitController extends Controller
   public function edit(string $id)
   {
     $article = Article::find($id);
-    $user = User::find($article->user_id);
-    $tag = Tag::find($article->id);
 
-    $article_info = [
-      "article" => $article,
-      "user" => $user,
-      "tag" => $tag,
-    ];
-
-    return view('conduit.editor', compact('article_info'));
+    return view('conduit.editor', compact('article'));
   }
 
   /**
    * Update the specified resource in storage.
    */
-  public function update(Request $request, string $id)
+  public function update(StoreArticleRequest $request, string $id)
   {
     $article = Article::find($id);
     $article->title = $request->title;
@@ -142,16 +96,21 @@ class ConduitController extends Controller
     $article->content = $request->content;
     $article->save();
 
-    $tag = Tag::where('article_id', $article->id)->get();
+    $tags_data = ArticleTag::where(['article_id' => $id]);
+    if ($tags_data !== null) {
+      $tags_data->delete();
+    }
 
-    if (isset($tag->name)) {
-      $tag->name = $request->tag;
-      $tag->save();
-    } else {
-      Tag::create([
-        'article_id' => $article->id,
-        'name' => $request->tag
-      ]);
+    if ($request->tags !== null) {
+      foreach ($request->tags as $tag) {
+        if ($tag !== null) {
+          $tag_data = Tag::firstOrCreate(['name' => $tag]);
+          ArticleTag::firstOrCreate([
+            'article_id' => $article->id,
+            'tag_id' => $tag_data->id
+          ]);
+        }
+      }
     }
 
     return to_route('conduit.index');
@@ -164,9 +123,19 @@ class ConduitController extends Controller
   {
     $article = Article::find($id);
 
-    $tags = Tag::where('article_id', $article->id)->get();
-    foreach ($tags as $tag) {
-      $tag->delete();
+    $article_tags = ArticleTag::where(['article_id' => $id]);
+    $article_tags_data = $article_tags->get();
+
+    if ($article_tags_data !== null) {
+      foreach ($article_tags_data as $article_tag_data) {
+        $tag_id = $article_tag_data->tag_id;
+        $existing_article_tags = ArticleTag::where(['tag_id' => $tag_id])->get();
+
+        if (count($existing_article_tags) === 1) {
+          Tag::where('id', $tag_id)->delete();
+        }
+      }
+      $article_tags->delete();
     }
 
     $article->delete();

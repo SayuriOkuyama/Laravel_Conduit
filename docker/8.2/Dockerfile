@@ -44,9 +44,16 @@ RUN apt-get update \
     && apt-get install -y yarn \
     && apt-get install -y mysql-client \
     && apt-get install -y postgresql-client-$POSTGRES_VERSION \
+    # 追加ライブラリ #
+    && apt-get install -y libonig-dev libzip-dev unzip default-jre \
+    ###############
     && apt-get -y autoremove \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# 追加ライブラリ #
+RUN npm install -D eslint prettier eslint-config-prettier
+###############
 
 RUN setcap "cap_net_bind_service=+ep" /usr/bin/php8.2
 
