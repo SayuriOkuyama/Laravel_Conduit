@@ -5,16 +5,16 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Tag extends Model
+class ArticleTag extends Model
 {
   use HasFactory;
 
-  protected $fillable = [
-    'name'
-  ];
+  protected $table = 'article_tag';
 
-  public function article()
-  {
-    return $this->belongsToMany(Article::class);
-  }
+  public $timestamps = false;
+
+  protected $fillable = [
+    'article_id',
+    'tag_id'
+  ];
 }
